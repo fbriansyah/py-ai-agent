@@ -1,4 +1,3 @@
-from typing import Annotated
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from fastapi import APIRouter, Depends
@@ -6,7 +5,8 @@ from starlette import status
 from models import Messages, MessageRole
 from database import SessionLocal
 from agents.chat import ChatAgent
-from pydantic import Literal, TypedDict
+from typing import Annotated, Literal
+from typing_extensions import TypedDict
 from pydantic_ai.messages import (
     ModelMessage, 
     ModelRequest, 

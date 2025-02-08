@@ -1,0 +1,18 @@
+meta {
+  name: webhook-rag-build
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{host}}/webhook/rag/build
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "session_id": "my-session-id-01",
+    "message": "what is raylib"
+  }
+}
