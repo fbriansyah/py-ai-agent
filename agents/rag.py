@@ -116,7 +116,7 @@ async def build_search_db():
 
     async with vector_db_connect(True) as pool:
         with logfire.span('create schema'):
-            setup_schema(pool)
+            await setup_schema(pool)
 
         sem = asyncio.Semaphore(10)
         async with asyncio.TaskGroup() as tg:
