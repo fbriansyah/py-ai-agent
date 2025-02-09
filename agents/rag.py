@@ -68,6 +68,12 @@ async def retrieve(context: RunContext[Deps], search_query: str) -> str:
         for row in rows
     )
 
+async def run_stream_agent(question: str, messages: list[ModelMessage]):
+    openai = AsyncOpenAI()
+    async with vector_db_connect(False) as pool:
+        deps = Deps(openai=openai, pool=pool)
+        return agent.run_stream(question, deps=deps, message_history=messages)
+    
 
 async def run_agent(question: str, messages: list[ModelMessage]) -> RunResult[str]:
     """Entry point to run the agent and perform RAG based question answering."""
