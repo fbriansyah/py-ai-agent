@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from fastapi import APIRouter, Depends
 from starlette import status
 from models import Messages, MessageRole
-from database import SessionLocal
+from databases.memory import SessionLocal
 from agents.chat import ChatAgent
 from typing import Annotated, Literal
 from typing_extensions import TypedDict

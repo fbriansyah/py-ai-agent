@@ -4,7 +4,7 @@ import models
 
 from fastapi import FastAPI
 from routers import default_webhook, rag_webhook
-from database import engine
+from databases.memory import engine
 from dotenv import load_dotenv, get_key
 
 # load the config from dot env file

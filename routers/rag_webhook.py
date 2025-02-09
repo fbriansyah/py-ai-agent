@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from starlette import status
 from agents.rag import build_search_db, run_agent
-from database import SessionLocal
+from databases.memory import SessionLocal
 from sqlalchemy.orm import Session
 from typing import Annotated
 from pydantic import BaseModel, Field
