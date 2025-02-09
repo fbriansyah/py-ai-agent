@@ -71,13 +71,10 @@ async def retrieve(context: RunContext[Deps], search_query: str) -> str:
 async def run_stream_agent(question: str, messages: list[ModelMessage]):
     """Run the streaming agent while keeping resources open."""
     openai = AsyncOpenAI()
-    pool = await vector_db_connect(False).__aenter__()
-    deps = Deps(openai=openai, pool=pool)
-    try:
-        stream = agent.run_stream(question, deps=deps, message_history=messages)
-        yield stream
-    finally:
-        await pool.close()
+    async with vector_db_connect(False) as pool:
+        deps = Deps(openai=openai, pool=pool)
+        async with agent.run_stream(question, deps=deps, message_history=messages) as stream:
+            yield stream
     
 
 async def run_agent(question: str, messages: list[ModelMessage]) -> RunResult[str]:
