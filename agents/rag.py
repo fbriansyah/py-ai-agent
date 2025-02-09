@@ -23,7 +23,9 @@ from pydantic_ai.messages import (
 from databases.vector import (
     database_connect as vector_db_connect, 
     setup_schema,
-    search_docs
+    search_docs,
+    create_embedding,
+    check_embedding_exists
 )
 
 logfire.configure(send_to_logfire='if-token-present', token=get_key(".env", "LOGFIRE_KEY"))
@@ -124,7 +126,7 @@ async def insert_doc_section(
 ) -> None:
     async with sem:
         url = section.url()
-        exists = await pool.fetchval('SELECT 1 FROM doc_sections WHERE url = $1', url)
+        exists = await check_embedding_exists(pool, url)
         if exists:
             logfire.info('Skipping {url=}', url=url)
             return
@@ -139,13 +141,8 @@ async def insert_doc_section(
         ), f'Expected 1 embedding, got {len(embedding.data)}, doc section: {section}'
         embedding = embedding.data[0].embedding
         embedding_json = pydantic_core.to_json(embedding).decode()
-        await pool.execute(
-            'INSERT INTO doc_sections (url, title, content, embedding) VALUES ($1, $2, $3, $4)',
-            url,
-            section.title,
-            section.content,
-            embedding_json,
-        )
+        
+        await create_embedding(pool, url, section.title, section.content, embedding_json)
 
 
 @dataclass

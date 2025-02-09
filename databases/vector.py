@@ -57,3 +57,14 @@ async def search_docs(pool: asyncpg.Pool, embedding_json: str) -> list:
         'SELECT url, title, content FROM doc_sections ORDER BY embedding <-> $1 LIMIT 8',
         embedding_json,
     )
+
+async def create_embedding(pool: asyncpg.Pool, url: str, title: str, content: str, embedding: str) -> None:
+    await pool.execute(
+            'INSERT INTO doc_sections (url, title, content, embedding) VALUES ($1, $2, $3, $4)',
+            url,
+            title,
+            content,
+            embedding,
+        )
+async def check_embedding_exists(pool: asyncpg.Pool, url: str):
+    return await pool.fetchval('SELECT 1 FROM doc_sections WHERE url = $1', url)
