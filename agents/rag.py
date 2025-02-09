@@ -70,9 +70,12 @@ async def retrieve(context: RunContext[Deps], search_query: str) -> str:
 
 async def run_stream_agent(question: str, messages: list[ModelMessage]):
     openai = AsyncOpenAI()
-    async with vector_db_connect(False) as pool:
-        deps = Deps(openai=openai, pool=pool)
-        return agent.run_stream(question, deps=deps, message_history=messages)
+    pool = await vector_db_connect(False).__aenter__()
+    deps = Deps(openai=openai, pool=pool)
+    try:
+        return await agent.run_stream(question, deps=deps, message_history=messages)
+    finally:
+        await pool.close()
     
 
 async def run_agent(question: str, messages: list[ModelMessage]) -> RunResult[str]:
