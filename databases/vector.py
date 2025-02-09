@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS doc_sections (
 CREATE INDEX IF NOT EXISTS idx_doc_sections_embedding ON doc_sections USING hnsw (embedding vector_l2_ops);
 """
 
-async def setup_schema(pool: asyncpg.Pool):
+async def setup_schema(pool: asyncpg.Pool) -> None:
     async with pool.acquire() as conn:
         async with conn.transaction():
             await conn.execute(DB_SCHEMA)

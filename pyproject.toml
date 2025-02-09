@@ -12,6 +12,7 @@ dependencies = [
     "logfire[asyncpg,fastapi,sqlite3]>=3.5.3",
     "pydantic-ai-slim[anthropic,groq,openai,vertexai]==0.0.21",
     "python-dotenv>=1.0.1",
+    "python-multipart>=0.0.20",
     "sqlalchemy>=2.0.38",
     "uvicorn>=0.34.0",
 ]

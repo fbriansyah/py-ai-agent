@@ -68,6 +68,14 @@ async def retrieve(context: RunContext[Deps], search_query: str) -> str:
         for row in rows
     )
 
+async def run_stream_agent(question: str, messages: list[ModelMessage]):
+    """Run the streaming agent while keeping resources open."""
+    openai = AsyncOpenAI()
+    async with vector_db_connect(False) as pool:
+        deps = Deps(openai=openai, pool=pool)
+        async with agent.run_stream(question, deps=deps, message_history=messages) as stream:
+            yield stream
+    
 
 async def run_agent(question: str, messages: list[ModelMessage]) -> RunResult[str]:
     """Entry point to run the agent and perform RAG based question answering."""
@@ -110,7 +118,7 @@ async def build_search_db():
 
     async with vector_db_connect(True) as pool:
         with logfire.span('create schema'):
-            setup_schema(pool)
+            await setup_schema(pool)
 
         sem = asyncio.Semaphore(10)
         async with asyncio.TaskGroup() as tg:
