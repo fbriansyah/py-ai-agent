@@ -64,7 +64,14 @@ async def post_chat(
         )
         result = ""
         messages = db.query(Messages).filter(Messages.session_id == SESSION_ID).all()
-        async for stream in run_stream_agent(prompt, messages=messages):
+        message_history: list = []
+        for m in messages:
+            if m.role == MessageRole.USER:
+                continue
+            message_history.append(
+                to_model_message(m)
+            )
+        async for stream in run_stream_agent(prompt, messages=message_history):
             async for text in stream.stream(debounce_by=0.01):
                 # text here is a `str` and the frontend wants
                 # JSON encoded ModelResponse, so we create one
@@ -113,3 +120,10 @@ def to_chat_message(m: Messages) -> ChatMessage:
             'content': m.message,
         }
     raise UnexpectedModelBehavior(f'Unexpected message type for chat app: {m}')
+
+def to_model_message(message: Messages) -> ModelMessage:
+    if message.role != MessageRole.USER:
+        return ModelResponse(
+        parts=[TextPart(content=message.message)],
+        timestamp=message.created_at.timestamp(),
+    )
