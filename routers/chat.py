@@ -63,8 +63,9 @@ async def post_chat(
             + b'\n'
         )
         messages = db.query(Messages).filter(Messages.session_id == SESSION_ID).all()
-        async with (await run_stream_agent(prompt, messages=messages)) as result:
-            async for text in result.stream(debounce_by=0.01):
+        async for stream in run_stream_agent(prompt, messages=messages):
+            async with stream as result:
+                async for text in result.stream(debounce_by=0.01):
                 # text here is a `str` and the frontend wants
                 # JSON encoded ModelResponse, so we create one
                 m = Messages(
