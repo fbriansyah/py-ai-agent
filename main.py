@@ -3,8 +3,8 @@ import logging
 import models
 
 from fastapi import FastAPI
-from routers import default_webhook
-from database import engine
+from routers import default_webhook, rag_webhook
+from databases.memory import engine
 from dotenv import load_dotenv, get_key
 
 # load the config from dot env file
@@ -13,6 +13,7 @@ load_dotenv()
 # setup fastapi
 app = FastAPI()
 app.include_router(default_webhook.router)
+app.include_router(rag_webhook.router)
 
 models.Base.metadata.create_all(bind=engine)
 

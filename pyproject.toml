@@ -9,6 +9,7 @@ dependencies = [
     "devtools>=0.12.2",
     "fastapi>=0.115.8",
     "httpx>=0.28.1",
+    "logfire[asyncpg,fastapi,sqlite3]>=3.5.3",
     "pydantic-ai-slim[anthropic,groq,openai,vertexai]==0.0.21",
     "python-dotenv>=1.0.1",
     "sqlalchemy>=2.0.38",

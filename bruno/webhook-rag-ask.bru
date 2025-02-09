@@ -1,0 +1,18 @@
+meta {
+  name: webhook-rag-ask
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{host}}/webhook/default/
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "session_id": "rag-session-01",
+    "message": "How do I configure logfire to work with FastAPI?"
+  }
+}
