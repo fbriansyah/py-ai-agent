@@ -6,6 +6,7 @@ const convElement = document.getElementById('conversation')
 
 const promptInput = document.getElementById('prompt-input') as HTMLInputElement
 const spinner = document.getElementById('spinner')
+const learnButton = document.getElementById('learn-btn')
 
 // stream the response and render messages as each chunk is received
 // data is sent as newline-delimited JSON
@@ -85,8 +86,24 @@ async function onSubmit(e: SubmitEvent): Promise<void> {
   await onFetchResponse(response)
 }
 
+async function onLearn(e: MouseEvent): Promise<void> {
+  e.preventDefault()
+  spinner.classList.add('active')
+  learnButton?.disabled = true
+  const response = await fetch('/webhook/rag/build', {method: 'POST'})
+  if (response.ok) {
+    alert('RAG built successfully')
+  } else {
+    console.error(`Unexpected response: ${response.status}`)
+    throw new Error(`Unexpected response: ${response.status}`)
+  }
+  learnButton?.disabled = false
+  spinner.classList.remove('active')
+}
+
 // call onSubmit when the form is submitted (e.g. user clicks the send button or hits Enter)
 document.querySelector('form').addEventListener('submit', (e) => onSubmit(e).catch(onError))
+learnButton?.addEventListener('click', (e) => onLearn(e).catch(onError))
 
 // load messages on page load
 fetch('/chat/').then(onFetchResponse).catch(onError)
