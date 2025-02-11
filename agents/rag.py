@@ -91,17 +91,13 @@ async def run_agent(question: str, messages: list[ModelMessage]) -> RunResult[st
     
     return answer
 
-DOCS_JSON = (
-    'https://gist.githubusercontent.com/'
-    'fbriansyah/afab34d633e33fd255251e98168bdd9d/raw/'
-    'b785bd5890cf111b5bf4b962632ded92166065d0/febrian-profile.json'
-)
-
-
 async def build_search_db():
     """Build the search database."""
+    doc_json = get_key(".env", "DOCS_JSON")
+    if doc_json == "":
+        raise ValueError('DOCS_JSON not set in .env file')
     async with httpx.AsyncClient() as client:
-        response = await client.get(DOCS_JSON)
+        response = await client.get(doc_json)
         response.raise_for_status()
     sections = sessions_ta.validate_json(response.content)
 
