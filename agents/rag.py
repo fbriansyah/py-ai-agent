@@ -68,6 +68,14 @@ async def retrieve(context: RunContext[Deps], search_query: str) -> str:
         for row in rows
     )
 
+async def run_stream_agent(question: str, messages: list[ModelMessage]):
+    """Run the streaming agent while keeping resources open."""
+    openai = AsyncOpenAI()
+    async with vector_db_connect(False) as pool:
+        deps = Deps(openai=openai, pool=pool)
+        async with agent.run_stream(question, deps=deps, message_history=messages) as stream:
+            yield stream
+    
 
 async def run_agent(question: str, messages: list[ModelMessage]) -> RunResult[str]:
     """Entry point to run the agent and perform RAG based question answering."""
@@ -83,25 +91,13 @@ async def run_agent(question: str, messages: list[ModelMessage]) -> RunResult[st
     
     return answer
 
-
-#######################################################
-# The rest of this file is dedicated to preparing the #
-# search database, and some utilities.                #
-#######################################################
-
-# JSON document from
-# https://gist.github.com/samuelcolvin/4b5bb9bb163b1122ff17e29e48c10992
-DOCS_JSON = (
-    'https://gist.githubusercontent.com/'
-    'samuelcolvin/4b5bb9bb163b1122ff17e29e48c10992/raw/'
-    '80c5925c42f1442c24963aaf5eb1a324d47afe95/logfire_docs.json'
-)
-
-
 async def build_search_db():
     """Build the search database."""
+    doc_json = get_key(".env", "DOCS_JSON")
+    if doc_json == "":
+        raise ValueError('DOCS_JSON not set in .env file')
     async with httpx.AsyncClient() as client:
-        response = await client.get(DOCS_JSON)
+        response = await client.get(doc_json)
         response.raise_for_status()
     sections = sessions_ta.validate_json(response.content)
 
@@ -110,7 +106,7 @@ async def build_search_db():
 
     async with vector_db_connect(True) as pool:
         with logfire.span('create schema'):
-            setup_schema(pool)
+            await setup_schema(pool)
 
         sem = asyncio.Semaphore(10)
         async with asyncio.TaskGroup() as tg:
@@ -157,7 +153,7 @@ class DocsSection:
     def url(self) -> str:
         url_path = re.sub(r'\.md$', '', self.path)
         return (
-            f'https://logfire.pydantic.dev/docs/{url_path}/#{slugify(self.title, "-")}'
+            f'https://febriannr/{url_path}/#{slugify(self.title, "-")}'
         )
 
     def embedding_content(self) -> str:

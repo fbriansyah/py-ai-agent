@@ -28,45 +28,18 @@ def get_db():
         db.close()
         
 db_dependency = Annotated[Session, Depends(get_db)]
+chat_agent = ChatAgent()
 
 class MessageRequest(BaseModel):
     session_id: str = Field(min_length=1)
     message: str = Field(min_length=1, max_length=1000)
     
-chat_agent = ChatAgent()
-
 def to_model_message(message: Messages) -> ModelMessage:
     if message.role != MessageRole.USER:
         return ModelResponse(
         parts=[TextPart(content=message.message)],
         timestamp=message.created_at.timestamp(),
     )
-
-class ChatMessage(TypedDict):
-    """Format of messages sent to the browser."""
-
-    role: Literal['user', 'model']
-    timestamp: str
-    content: str
-
-
-def to_chat_message(m: ModelMessage) -> ChatMessage:
-    first_part = m.parts[0]
-    if isinstance(m, ModelRequest):
-        if isinstance(first_part, UserPromptPart):
-            return {
-                'role': 'user',
-                'timestamp': first_part.timestamp.isoformat(),
-                'content': first_part.content,
-            }
-    elif isinstance(m, ModelResponse):
-        if isinstance(first_part, TextPart):
-            return {
-                'role': 'model',
-                'timestamp': m.timestamp.isoformat(),
-                'content': first_part.content,
-            }
-    raise UnexpectedModelBehavior(f'Unexpected message type for chat app: {m}')
 
 @router.post("/", status_code=status.HTTP_200_OK)
 async def default_webhook(message_request: MessageRequest, db: db_dependency):
