@@ -20,7 +20,7 @@ from pydantic_ai.messages import (
     ModelMessage,
 )
 
-from databases.vector import (
+from databases.pg_vector import (
     database_connect as vector_db_connect, 
     setup_schema,
     search_docs,
