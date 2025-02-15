@@ -27,7 +27,6 @@ from databases.pg_vector import (
     create_embedding,
     check_embedding_exists
 )
-
 logfire.configure(send_to_logfire='if-token-present', token=get_key(".env", "LOGFIRE_KEY"))
 logfire.instrument_asyncpg()
 
