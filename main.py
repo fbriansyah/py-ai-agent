@@ -1,7 +1,7 @@
 import uvicorn
 import logging
 import models
-import pprint
+import logfire
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
@@ -10,10 +10,13 @@ from databases.memory import engine
 from dotenv import load_dotenv, get_key
 from pathlib import Path
 from databases.mongo import MongoClient
+from databases.rabbitmq import RabbitClient
 from services.file_processor import FileProcessor
 
 # load the config from dot env file
 load_dotenv()
+
+logfire.configure(send_to_logfire='if-token-present', token=get_key(".env", "LOGFIRE_KEY"))
 
 # setup fastapi
 app = FastAPI()
@@ -24,6 +27,14 @@ app.include_router(chat.router)
 models.Base.metadata.create_all(bind=engine)
 
 THIS_DIR = Path(__file__).parent
+
+
+rabbit_client = RabbitClient(
+    host=get_key(".env", "RABBIT_HOST"),
+    port=get_key(".env", "RABBIT_PORT"),
+    username=get_key(".env", "RABBIT_USER"),
+    password=get_key(".env", "RABBIT_PASS")
+)
 
 # setup logging
 logging.basicConfig(level=logging.INFO)
@@ -67,8 +78,16 @@ async def test_mongo():
         "data": list_docs
     }
 
+@app.get("/test-rabbit")
+def test_rabbit():
+    rabbit_client.publish("ai.upload", "./uploads/ocbc-doc-tech.pdf")
+    return {
+        "message": "success"
+    }
+
 def main():
     port = get_key(".env", "PORT")
+    
     # FileProcessor("./uploads/ocbc-doc-tech.pdf").process_file()
     if port is None:
         port = 8000
