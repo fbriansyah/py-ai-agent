@@ -90,7 +90,6 @@ async def retrieve(context: RunContext[Deps], search_query: str) -> str:
     mongo_client = MongoClient(mongo_uri, "pyAgent")
     mongo_client.ping()
     data = await mongo_client.vector_search("doc_sections", pipeline)
-    print(data)
     rows = []
     async for dt in data:
         row = {

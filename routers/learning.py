@@ -6,11 +6,13 @@ from starlette import status
 from openai import AsyncOpenAI
 from dotenv import get_key
 from langchain_text_splitters import MarkdownTextSplitter
+from pydantic import BaseModel, Field
 
 from databases.mongo import MongoClient
 from databases.rabbitmq import RabbitClient
 from models import DocSection
 from utils.embedding import Embedding
+from agents.mongo_rag import MongoRagAgent
 
 router = APIRouter(
     prefix="/learning",
@@ -96,3 +98,15 @@ async def async_learning():
     
     
     return {"message": "Learning", "files": learning_files}
+
+class MessageRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=1000)
+
+@router.post("/ask", status_code=status.HTTP_200_OK)
+async def ask(message_request: MessageRequest):
+    """Ask a question to the agent"""
+    mongo_uri = get_key(".env", "MONGO_URI")
+    with logfire.span('mongo_rag_agent'):
+        agent = MongoRagAgent(mongo_uri)
+        answer = await agent.run_agent(message_request.question, [])
+        return {"message": "Ask", "answer": answer}

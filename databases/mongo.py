@@ -28,6 +28,7 @@ class MongoClient:
             print(e)
 
     def vector_search(self, collection_name: str, pipeline: list):
+        print(f"collenction {collection_name}")
         coll = self.client[collection_name]
         return coll.aggregate(pipeline)
 
