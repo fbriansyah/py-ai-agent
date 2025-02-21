@@ -1,8 +1,9 @@
 import json
 
 from datetime import datetime, timezone
-from typing import Annotated, Any, Callable, Literal, TypeVar
-from typing_extensions import LiteralString, ParamSpec, TypedDict
+from typing import Annotated, Literal
+from typing_extensions import TypedDict
+from dotenv import get_key
 
 from models import Messages, MessageRole
 from databases.memory import SessionLocal
@@ -12,14 +13,12 @@ from fastapi import APIRouter, Depends, Form as FastApiForm
 from fastapi.responses import FileResponse, Response, StreamingResponse
 
 from agents.rag import run_stream_agent
+from agents.mongo_rag import MongoRagAgent
 
 from pydantic_ai.messages import (
     ModelMessage,
-    ModelMessagesTypeAdapter,
-    ModelRequest,
     ModelResponse,
     TextPart,
-    UserPromptPart,
 )
 from pydantic_ai.exceptions import UnexpectedModelBehavior
 
@@ -71,7 +70,10 @@ async def post_chat(
             message_history.append(
                 to_model_message(m)
             )
-        async for stream in run_stream_agent(prompt, messages=message_history):
+        mongo_uri = get_key(".env", "MONGO_URI")
+        agent = MongoRagAgent(mongo_uri)
+        # async for stream in run_stream_agent(prompt, messages=message_history):
+        async for stream in agent.run_stream_agent(prompt, messages=message_history):
             async for text in stream.stream(debounce_by=0.01):
                 # text here is a `str` and the frontend wants
                 # JSON encoded ModelResponse, so we create one

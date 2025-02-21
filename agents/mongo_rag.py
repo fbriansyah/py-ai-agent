@@ -1,14 +1,7 @@
-import asyncio
 import logfire
-import re
-import unicodedata
 from dataclasses import dataclass
 
-import asyncpg
-import httpx
-import pydantic_core
 from openai import AsyncOpenAI
-from pydantic import TypeAdapter
 from dotenv import get_key
 
 from pydantic_ai import RunContext
@@ -28,6 +21,7 @@ class Deps:
 
 class MongoRagAgent():
     agent = Agent('openai:gpt-4o', deps_type=Deps)
+    openai = AsyncOpenAI()
     def __init__(self, mongo_uri = ""):
         if mongo_uri == "":
             mongo_uri = get_key(".env", "MONGO_URI")
@@ -38,16 +32,22 @@ class MongoRagAgent():
     
     async def run_agent(self, question: str, messages: list[ModelMessage]) -> RunResult[str]:
         """Entry point to run the agent and perform RAG based question answering."""
-        openai = AsyncOpenAI()
-        
-        logfire.instrument_openai(openai)
-
+        logfire.instrument_openai(self.openai)
         logfire.info('Asking "{question}"', question=question)
 
-        deps = Deps(openai=openai, mongo=self.mongo_client)
+        deps = Deps(openai=self.openai, mongo=self.mongo_client)
         answer = await self.agent.run(question, deps=deps, message_history=messages)
         
         return answer
+    async def run_stream_agent(self, question: str, messages: list[ModelMessage]):
+        """Run the streaming agent while keeping resources open."""
+        logfire.instrument_openai(self.openai)
+        logfire.info('Asking "{question}"', question=question)
+
+        deps = Deps(openai=self.openai, mongo=self.mongo_client)
+    
+        async with self.agent.run_stream(question, deps=deps, message_history=messages) as stream:
+            yield stream
     
     @agent.tool
     async def retrieve(context: RunContext[Deps], search_query: str) -> str:

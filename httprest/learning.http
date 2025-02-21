@@ -4,7 +4,7 @@ GET http://localhost:8000/learning/sync HTTP/1.1
 
 ###
 
-GET http://localhost:8000/learning/sync HTTP/1.1
+GET http://localhost:8000/learning/async HTTP/1.1
 
 ###
 
