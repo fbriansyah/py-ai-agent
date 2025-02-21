@@ -5,15 +5,11 @@ from starlette import status
 from models import Messages, MessageRole
 from databases.memory import SessionLocal
 from agents.chat import ChatAgent
-from typing import Annotated, Literal
-from typing_extensions import TypedDict
+from typing import Annotated
 from pydantic_ai.messages import (
     ModelMessage, 
-    ModelRequest, 
     TextPart, 
-    ModelResponse,
-    UserPromptPart,
-    UnexpectedModelBehavior
+    ModelResponse
 )
 
 router = APIRouter(

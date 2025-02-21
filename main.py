@@ -5,7 +5,7 @@ import logfire
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
-from routers import default_webhook, rag_webhook, chat
+from routers import default_webhook, rag_webhook, chat, learning
 from databases.memory import engine
 from dotenv import load_dotenv, get_key
 from pathlib import Path
@@ -26,6 +26,7 @@ app = FastAPI()
 app.include_router(default_webhook.router)
 app.include_router(rag_webhook.router)
 app.include_router(chat.router)
+app.include_router(learning.router)
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -187,6 +188,12 @@ async def test_search(payload: SearchRequest):
 
 def main():
     port = get_key(".env", "PORT")
+    try:
+        logging.info("Try to settup RabbitMQ...")
+        rabbit_client.setup()
+    except Exception as e:
+        logging.error("Failed to connect to RabbitMQ: %s", e)
+        return
     
     # FileProcessor("./uploads/ocbc-doc-tech.pdf").process_file()
     if port is None:

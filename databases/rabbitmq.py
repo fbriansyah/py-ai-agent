@@ -13,7 +13,8 @@ class QueueConfig:
         self.routing_key = routing_key
         
 queue_configs = {
-    "ai.upload": QueueConfig("py-agent.upload", "file-proccess.ai", "q.file-proccess.ai")
+    "ai.upload": QueueConfig("py-agent.upload", "file-proccess.ai", "q.file-proccess.ai"),
+    "learning.async": QueueConfig("py-agent.learning", "file-proccess.learning", "q.file-proccess.learning")
 }
 
 class RabbitClient:
