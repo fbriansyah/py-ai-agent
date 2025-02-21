@@ -27,4 +27,7 @@ class MongoClient:
         except Exception as e:
             print(e)
 
+    def vector_search(self, collection_name: str, pipeline: list):
+        coll = self.client[collection_name]
+        return coll.aggregate(pipeline)
 

@@ -27,6 +27,7 @@ from databases.pg_vector import (
     create_embedding,
     check_embedding_exists
 )
+from databases.mongo import MongoClient
 logfire.configure(send_to_logfire='if-token-present', token=get_key(".env", "LOGFIRE_KEY"))
 logfire.instrument_asyncpg()
 
@@ -60,16 +61,53 @@ async def retrieve(context: RunContext[Deps], search_query: str) -> str:
         len(embedding.data) == 1
     ), f'Expected 1 embedding, got {len(embedding.data)}, doc query: {search_query!r}'
     embedding = embedding.data[0].embedding
-    embedding_json = pydantic_core.to_json(embedding).decode()
-    rows = await search_docs(context.deps.pool, embedding_json)
+    # embedding_json = pydantic_core.to_json(embedding).decode()
+    # rows = await search_docs(context.deps.pool, embedding_json)
+    pipeline = [
+        {
+            '$vectorSearch': {
+                'index': 'embedding_index', 
+                'path': 'embedding', 
+                'filter': {}, 
+                'queryVector': embedding, 
+                'numCandidates': 150, 
+                'limit': 20
+            }
+        }, 
+        {
+            '$project': {
+                '_id': 0, 
+                'slug': 1, 
+                'title': 1, 
+                'content': 1
+            }
+        }
+    ]
+    mongo_uri = get_key(".env", "MONGO_URI")
+    if mongo_uri is None:
+        logfire.error("MONGO_URI not found in .env file")
+        return
+    mongo_client = MongoClient(mongo_uri, "pyAgent")
+    mongo_client.ping()
+    data = await mongo_client.vector_search("doc_sections", pipeline)
+    print(data)
+    rows = []
+    async for dt in data:
+        row = {
+            "slug": dt["slug"],
+            "title": dt["title"],
+            "content": dt["content"]
+        }
+        rows.append(row)
     return '\n\n'.join(
-        f'# {row["title"]}\nDocumentation URL:{row["url"]}\n\n{row["content"]}\n'
+        f'# {row["title"]}\nDocumentation URL:{row["slug"]}\n\n{row["content"]}\n'
         for row in rows
     )
 
 async def run_stream_agent(question: str, messages: list[ModelMessage]):
     """Run the streaming agent while keeping resources open."""
     openai = AsyncOpenAI()
+    
     async with vector_db_connect(False) as pool:
         deps = Deps(openai=openai, pool=pool)
         async with agent.run_stream(question, deps=deps, message_history=messages) as stream:

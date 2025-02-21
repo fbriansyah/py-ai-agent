@@ -6,15 +6,21 @@ from databases.rabbitmq import RabbitClient, queue_configs
 from pika.adapters.blocking_connection import BlockingChannel
 from pika.spec import Basic, BasicProperties
 
+from services.file_processor import FileProcessor
+
 # load the config from dot env file
 load_dotenv()
 
 logfire.configure(send_to_logfire='if-token-present', token=get_key(".env", "LOGFIRE_KEY"))
 
 def ai_upload_callback(ch: BlockingChannel, method: Basic.Deliver, properties: BasicProperties, body: bytes):
-    data: str = body.decode()
-    print(f" [x] Received {data}")
-    ch.basic_ack(delivery_tag = method.delivery_tag)
+    file_name: str = body.decode()
+    with logfire.span('ai_upload_callback'):
+        logfire.info(f'Processing {file_name}')
+        file_processor = FileProcessor(file_name)
+        
+        file_processor.process_file()
+        ch.basic_ack(delivery_tag = method.delivery_tag)
 
 def main():
     # listen rabbitmq

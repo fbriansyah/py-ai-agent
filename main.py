@@ -12,6 +12,9 @@ from pathlib import Path
 from databases.mongo import MongoClient
 from databases.rabbitmq import RabbitClient
 from services.file_processor import FileProcessor
+from langchain_text_splitters import MarkdownTextSplitter
+from openai import AsyncOpenAI
+from pydantic import BaseModel, Field
 
 # load the config from dot env file
 load_dotenv()
@@ -52,11 +55,20 @@ class DocSection:
     slug: str
     title: str
     content: str
+    embedding: list[float]
     
-    def __init__(self, slug: str, title: str, content: str):
+    def __init__(self, slug: str, title: str, content: str, embedding: list[float]):
         self.slug = slug
         self.title = title
         self.content = content
+        self.embedding = embedding
+    def to_dict(self):
+        return {
+            "slug": self.slug,
+            "title": self.title,
+            "content": self.content,
+            "embedding": self.embedding
+        }
 
 @app.get("/test-mongo")
 async def test_mongo():
@@ -83,6 +95,94 @@ def test_rabbit():
     rabbit_client.publish("ai.upload", "./uploads/ocbc-doc-tech.pdf")
     return {
         "message": "success"
+    }
+    
+@app.get("/test-split")
+async def test_split():
+    list_docs: list[DocSection] = []
+    content = ""
+    open_ai = AsyncOpenAI()
+    logfire.instrument_openai(open_ai)
+    mongo_uri = get_key(".env", "MONGO_URI")
+    if mongo_uri is None:
+        logging.error("MONGO_URI not found in .env file")
+        return
+    mongo_client = MongoClient(mongo_uri, "pyAgent")
+    mongo_client.ping()
+    col = mongo_client.get_collection("doc_sections")
+    # open the file
+    with open("./uploads/ocbc-doc-tech.md", "r") as f:
+            content = f.read()
+    with logfire.span('split_file'):
+        md_splitter = MarkdownTextSplitter(chunk_size=1000, chunk_overlap=200)
+        chunks = md_splitter.split_text(content)
+        for chunk in chunks:
+            try:
+                embedding = await open_ai.embeddings.create(
+                    input=chunk,
+                    model='text-embedding-3-small',
+                )
+                list_docs.append(DocSection(slug="ocbc-doc-tech.md", title="SNAP OCBC Doc Tech", content=chunk, embedding=embedding.data[0].embedding))
+            except Exception as e:
+                logfire.error(e)
+    # with logfire.span('insert'):
+        list_docs_dict = [doc.to_dict() for doc in list_docs]
+        await col.insert_many(list_docs_dict)
+    return {
+        "message": "success"
+    }
+
+class SearchRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=1000)
+    
+@app.post("/test-search")
+async def test_search(payload: SearchRequest):
+    mongo_uri = get_key(".env", "MONGO_URI")
+    if mongo_uri is None:
+        logging.error("MONGO_URI not found in .env file")
+        return
+    mongo_client = MongoClient(mongo_uri, "pyAgent")
+    mongo_client.ping()
+    open_ai = AsyncOpenAI()
+    col = mongo_client.get_collection("doc_sections")
+    # open the file
+    embedding = await open_ai.embeddings.create(
+        input=payload.message,
+        model='text-embedding-3-small',
+    )
+    query_embedding = embedding.data[0].embedding
+    pipeline = [
+        {
+            '$vectorSearch': {
+                'index': 'embedding_index', 
+                'path': 'embedding', 
+                'filter': {}, 
+                'queryVector': query_embedding, 
+                'numCandidates': 150, 
+                'limit': 20
+            }
+        }, 
+        {
+            '$project': {
+                '_id': 0, 
+                'slug': 1, 
+                'title': 1, 
+                'content': 1
+            }
+        }
+    ]
+    results = await col.aggregate(pipeline)
+    doc_list = []
+    async for doc in results:
+        obj = {
+            "slug": doc["slug"],
+            "title": doc["title"],
+            "content": doc["content"]
+        }
+        doc_list.append(obj)
+    
+    return {
+        "data": doc_list
     }
 
 def main():

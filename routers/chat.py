@@ -35,7 +35,7 @@ def get_db():
         db.close()
 db_dependency = Annotated[Session, Depends(get_db)]
 
-SESSION_ID = 'rag-session-04' # TODO: get from session
+SESSION_ID = 'rag-session-05' # TODO: get from session
 
 @router.get('/')
 async def index(db: db_dependency) -> FileResponse:

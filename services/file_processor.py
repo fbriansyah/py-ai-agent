@@ -1,10 +1,11 @@
 import spacy
+import logfire
 
 from spacy_layout import spaCyLayout
 from databases.mongo import MongoClient
 
 from openai import AsyncOpenAI
-
+from langchain_text_splitters import MarkdownTextSplitter
 
 class FileProcessor:
     mongo_client: MongoClient | None
@@ -23,9 +24,19 @@ class FileProcessor:
     def process_file(self):
         nlp = spacy.blank("en")
         layout = spaCyLayout(nlp)
-
+        logfire.info(f"Reading file {self.file_path}")
         # Process a document and create a spaCy Doc object
         doc = layout(self.file_path)
+        logfire.info(f"Done reading file {self.file_path}")
+        
+        # save content to file
+        content = doc._.markdown
+        with open(self.file_path + ".md", "w") as f:
+            f.write(content)
         
         # Markdown representation of the document
-        print(doc._.markdown)
+        with logfire.span('process_file'):
+            md_splitter = MarkdownTextSplitter(chunk_size=1000, chunk_overlap=200)
+            chunks = md_splitter.split_text(content)
+            for chunk in chunks:
+                print(chunk)
